@@ -27,6 +27,10 @@ func NewMockWindow() *MockWindow {
 	}
 }
 
+func (w *MockWindow) Data() sstream.StorageBackend {
+	return w.data
+}
+
 func (w *MockWindow) InitLive() {
 	w.initedLive = true
 	w.InitWithMidTimestamp(time.Now())
