@@ -1,6 +1,7 @@
 package rstream
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -103,6 +104,10 @@ func (w *StandardWindow) Dispose() {
 	w.disposeCbs = nil
 	w.disposed = true
 	w.disposeWait.Done()
+
+	if w.state != WindowState_Committed {
+		w.SetError(errors.New("Window was disposed."))
+	}
 }
 
 // Sets an error, enters error state, disposes window.

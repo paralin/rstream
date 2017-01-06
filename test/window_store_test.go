@@ -46,4 +46,8 @@ func TestFetchBeginning(t *testing.T) {
 			t.Fatalf("Expected state at %d to be %v, instead was %v", i, stateSequence[i], state)
 		}
 	}
+	wind.Dispose()
+	if wind.State() != rstream.WindowState_Committed {
+		t.Fatalf("Error should not be set after committed when disposing.")
+	}
 }
