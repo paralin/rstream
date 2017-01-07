@@ -149,20 +149,16 @@ func (w *WindowMultiplexer) AddFactory(fact *WindowFactoryReference) {
 	w.instanceFactory(fact)
 }
 
-func (w *WindowMultiplexer) DeleteFactory(fact *WindowFactoryReference) {
-	if fact.IsNil() {
-		return
-	}
-
+func (w *WindowMultiplexer) DeleteFactory(identifier string) {
 	w.factoryMtx.Lock()
 	defer w.factoryMtx.Unlock()
 
-	_, ok := w.factoryReferences[fact.Identifier]
+	_, ok := w.factoryReferences[identifier]
 	if !ok {
 		return
 	}
-	delete(w.factoryReferences, fact.Identifier)
-	w.deleteFactoryInstances(fact.Identifier)
+	delete(w.factoryReferences, identifier)
+	w.deleteFactoryInstances(identifier)
 }
 
 // Note: lock factoryMtx first.
