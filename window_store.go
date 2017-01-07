@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/oleiade/lane"
+	"golang.org/x/net/context"
 )
 
 type pendingWindowInterest struct {
@@ -18,7 +19,7 @@ type BuildWindowResult struct {
 	Window Window
 }
 
-type WindowFactory func(ws *WindowStore) Window
+type WindowFactory func(ctx context.Context) Window
 
 // A time linear storage of windows.
 type WindowStore struct {
@@ -32,13 +33,15 @@ type WindowStore struct {
 	pendingInterestWake chan bool
 
 	// Disposed
-	disposed     bool
-	disposedMtx  sync.Mutex
-	disposedChan chan bool
+	disposed    bool
+	disposedMtx sync.Mutex
+
+	storeContext       context.Context
+	storeContextCancel context.CancelFunc
 }
 
-func NewWindowStore(windowFactory WindowFactory) *WindowStore {
-	if windowFactory == nil {
+func NewWindowStore(ctx context.Context, windowFactory WindowFactory) *WindowStore {
+	if windowFactory == nil || ctx == nil {
 		return nil
 	}
 
@@ -46,8 +49,8 @@ func NewWindowStore(windowFactory WindowFactory) *WindowStore {
 		pendingInterests:    lane.NewQueue(),
 		pendingInterestWake: make(chan bool, 1),
 		windowFactory:       windowFactory,
-		disposedChan:        make(chan bool, 1),
 	}
+	res.storeContext, res.storeContextCancel = context.WithCancel(ctx)
 	go res.update()
 	return res
 }
@@ -83,10 +86,11 @@ func (ws *WindowStore) BuildWindow(midTime *time.Time) <-chan *BuildWindowResult
 // Update logic loop
 func (ws *WindowStore) update() {
 	defer ws.disposeCleanup()
+	done := ws.storeContext.Done()
 	for {
 		select {
 		case <-ws.pendingInterestWake:
-		case <-ws.disposedChan:
+		case <-done:
 			return
 		}
 
@@ -103,7 +107,7 @@ func (ws *WindowStore) update() {
 			}
 		}
 
-		pendingWindow := ws.windowFactory(ws)
+		pendingWindow := ws.windowFactory(ws.storeContext)
 		if pendingWindow == nil {
 			continue
 		}
@@ -133,7 +137,7 @@ func (ws *WindowStore) update() {
 				if state != WindowState_Pending {
 					break WaitForWindowLoop
 				}
-			case <-ws.disposedChan:
+			case <-done:
 				pendingWindow.Dispose()
 				return
 			}
@@ -259,7 +263,7 @@ func (ws *WindowStore) Dispose() {
 	}
 
 	ws.disposed = true
-	ws.disposedChan <- true
+	ws.storeContextCancel()
 }
 
 func (ws *WindowStore) disposeCleanup() {

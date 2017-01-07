@@ -105,7 +105,8 @@ func (w *StandardWindow) Dispose() {
 	w.disposeWait.Done()
 
 	if w.state != WindowState_Committed {
-		w.SetError(WindowDisposedErr)
+		w.err = WindowDisposedErr
+		w.NextState(WindowState_Error)
 	}
 }
 

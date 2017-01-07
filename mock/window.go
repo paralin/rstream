@@ -7,6 +7,7 @@ import (
 
 	"github.com/fuserobotics/rstream"
 	sstream "github.com/fuserobotics/statestream"
+	"golang.org/x/net/context"
 )
 
 const mockDelay time.Duration = time.Duration(100) * time.Millisecond
@@ -18,12 +19,14 @@ type MockWindow struct {
 	data         *sstream.MemoryBackend
 	initedLive   bool
 	activateOnce sync.Once
+	windowCtx    context.Context
 }
 
-func NewMockWindow() *MockWindow {
+func NewMockWindow(ctx context.Context) *MockWindow {
 	return &MockWindow{
 		StandardWindow: rstream.NewStandardWindow(),
 		data:           &sstream.MemoryBackend{Entries: MockDataset()},
+		windowCtx:      ctx,
 	}
 }
 
@@ -72,9 +75,15 @@ func (w *MockWindow) doActivate() {
 	go func() {
 		time.Sleep(mockDelay)
 
-		// TODO: simulate fetching entries
+		entries := MockDataset()
+
+		for _, ent := range entries {
+			w.data.SaveEntry(ent)
+			time.Sleep(time.Duration(50) * time.Millisecond)
+		}
+
 		w.NextState(rstream.WindowState_Committed)
 	}()
 }
 
-var mockWindowTypeAssertion rstream.Window = NewMockWindow()
+var mockWindowTypeAssertion rstream.Window = NewMockWindow(context.Background())

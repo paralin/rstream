@@ -3,29 +3,30 @@ package test
 import (
 	"github.com/fuserobotics/rstream"
 	"github.com/fuserobotics/rstream/mock"
+	"golang.org/x/net/context"
 	"testing"
 	"time"
 )
 
-type testContext struct {
+type storeTestContext struct {
 	WindowFactory rstream.WindowFactory
 	Store         *rstream.WindowStore
 }
 
-func newMockWindow(ws *rstream.WindowStore) rstream.Window {
-	return mock.NewMockWindow()
+func newMockWindow(ctx context.Context) rstream.Window {
+	return mock.NewMockWindow(ctx)
 }
 
-func newTestContext() *testContext {
-	return &testContext{
+func newStoreTestContext() *storeTestContext {
+	return &storeTestContext{
 		WindowFactory: newMockWindow,
-		Store:         rstream.NewWindowStore(newMockWindow),
+		Store:         rstream.NewWindowStore(context.Background(), newMockWindow),
 	}
 }
 
 func TestFetchBeginning(t *testing.T) {
 	now := mock.RootMockTime
-	tc := newTestContext()
+	tc := newStoreTestContext()
 	tts := now.Add(time.Duration(-7) * time.Second)
 	resChan := tc.Store.BuildWindow(&tts)
 	result := <-resChan
